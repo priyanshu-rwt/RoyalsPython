@@ -17,7 +17,17 @@ origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.s
 if not origins:
     raise RuntimeError("ALLOWED_ORIGINS is required in production.")
 
-CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=False)
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": "*"
+        }
+    },
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=False
+)
 
 mail = Mail(app)
 app.extensions["mail"] = mail
