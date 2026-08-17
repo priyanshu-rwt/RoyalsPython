@@ -1,7 +1,7 @@
 import re
 from werkzeug.utils import secure_filename
 
-EMAIL_RE = re.compile(r"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def extract_detail(message, label):
     if not message:
