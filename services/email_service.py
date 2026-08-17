@@ -47,24 +47,8 @@ def send_contact_emails(
     hr_email = os.getenv("HR_EMAIL")
     sender = get_sender()
 
-    # Applicant confirmation
-    user_payload = {
-        "from": sender,
-        "to": [email],
-        "subject": "Thank you for contacting Royals Webtech",
-        "text": f"""Hello {name},
-
-Thank you for contacting Royals Webtech.
-
-We have successfully received your requirement for {service}.
-Our team will review your enquiry and get back to you shortly.
-
-Regards,
-Royals Webtech Team
-""",
-    }
-
     # HR notification
+    # Resend testing mode only allows sending to the account owner email.
     hr_payload = {
         "from": sender,
         "to": [hr_email],
@@ -84,7 +68,8 @@ Source: {source_page}
 """,
     }
 
-    send_resend_email(user_payload)
+    # Send only to HR/testing email.
+    # Applicant confirmation will be enabled after domain verification.
     send_resend_email(hr_payload)
 
 
@@ -116,27 +101,6 @@ def send_career_emails(
 ):
     hr_email = os.getenv("HR_EMAIL")
     sender = get_sender()
-
-    # Applicant confirmation
-    user_payload = {
-        "from": sender,
-        "to": [email],
-        "subject": "Application Received - Royals Webtech",
-        "text": f"""Hello {name},
-
-Thank you for applying to Royals Webtech.
-
-We have successfully received your application.
-
-Position: {position}
-Application Type: {application_type}
-
-Our HR team will review your profile and resume. If your profile matches our requirements, our team will contact you.
-
-Regards,
-Royals Webtech Team
-""",
-    }
 
     # Resume attachment
     attachments = []
@@ -196,5 +160,6 @@ Resume: {filename}
     if attachments:
         hr_payload["attachments"] = attachments
 
-    send_resend_email(user_payload)
+    # Send only to HR/testing email.
+    # Applicant confirmation will be enabled after domain verification.
     send_resend_email(hr_payload)
