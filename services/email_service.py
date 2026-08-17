@@ -1,13 +1,58 @@
 import os
-from flask_mail import Message
+import base64
+import requests
 
-def send_contact_emails(mail, name, email, phone, company, service, message, source_page):
-    user_msg = Message(
-        subject="Thank you for contacting Royals Webtech",
-        sender=os.getenv("MAIL_USERNAME"),
-        recipients=[email],
+
+RESEND_API_URL = "https://api.resend.com/emails"
+
+
+def send_resend_email(payload):
+    api_key = os.getenv("RESEND_API_KEY")
+
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY is not configured.")
+
+    response = requests.post(
+        RESEND_API_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=20,
     )
-    user_msg.body = f"""Hello {name},
+
+    if not response.ok:
+        raise RuntimeError(
+            f"Resend email failed: {response.status_code} {response.text}"
+        )
+
+    return response.json()
+
+
+def get_sender():
+    return os.getenv("MAIL_FROM", "onboarding@resend.dev")
+
+
+def send_contact_emails(
+    mail,
+    name,
+    email,
+    phone,
+    company,
+    service,
+    message,
+    source_page
+):
+    hr_email = os.getenv("HR_EMAIL")
+    sender = get_sender()
+
+    # Applicant confirmation
+    user_payload = {
+        "from": sender,
+        "to": [email],
+        "subject": "Thank you for contacting Royals Webtech",
+        "text": f"""Hello {name},
 
 Thank you for contacting Royals Webtech.
 
@@ -16,13 +61,15 @@ Our team will review your enquiry and get back to you shortly.
 
 Regards,
 Royals Webtech Team
-"""
-    hr_msg = Message(
-        subject=f"New Website Enquiry - {service}",
-        sender=os.getenv("MAIL_USERNAME"),
-        recipients=[os.getenv("HR_EMAIL")],
-    )
-    hr_msg.body = f"""A new enquiry has been submitted from the Royals Webtech website.
+""",
+    }
+
+    # HR notification
+    hr_payload = {
+        "from": sender,
+        "to": [hr_email],
+        "subject": f"New Website Enquiry - {service}",
+        "text": f"""A new enquiry has been submitted from the Royals Webtech website.
 
 Name: {name}
 Email: {email}
@@ -34,23 +81,48 @@ Requirement:
 {message}
 
 Source: {source_page}
-"""
-    mail.send(user_msg)
-    mail.send(hr_msg)
+""",
+    }
+
+    send_resend_email(user_payload)
+    send_resend_email(hr_payload)
+
 
 def send_career_emails(
-    mail, name, email, phone, location, position, application_type,
-    college, degree, branch, semester, internship_skills, experience,
-    current_company, expected_ctc, notice_period, job_skills,
-    linkedin, github, portfolio, cover_message, filename,
-    resume_data, resume_content_type
+    mail,
+    name,
+    email,
+    phone,
+    location,
+    position,
+    application_type,
+    college,
+    degree,
+    branch,
+    semester,
+    internship_skills,
+    experience,
+    current_company,
+    expected_ctc,
+    notice_period,
+    job_skills,
+    linkedin,
+    github,
+    portfolio,
+    cover_message,
+    filename,
+    resume_data,
+    resume_content_type
 ):
-    user_msg = Message(
-        subject="Application Received - Royals Webtech",
-        sender=os.getenv("MAIL_USERNAME"),
-        recipients=[email],
-    )
-    user_msg.body = f"""Hello {name},
+    hr_email = os.getenv("HR_EMAIL")
+    sender = get_sender()
+
+    # Applicant confirmation
+    user_payload = {
+        "from": sender,
+        "to": [email],
+        "subject": "Application Received - Royals Webtech",
+        "text": f"""Hello {name},
 
 Thank you for applying to Royals Webtech.
 
@@ -63,15 +135,27 @@ Our HR team will review your profile and resume. If your profile matches our req
 
 Regards,
 Royals Webtech Team
-"""
-    hr_msg = Message(
-        subject=f"New Career Application - {position}",
-        sender=os.getenv("MAIL_USERNAME"),
-        recipients=[os.getenv("HR_EMAIL")],
-    )
-    hr_msg.body = f"""A new career application has been submitted from the Royals Webtech website.
+""",
+    }
+
+    # Resume attachment
+    attachments = []
+
+    if resume_data and filename:
+        attachments.append({
+            "filename": filename,
+            "content": base64.b64encode(resume_data).decode("utf-8"),
+        })
+
+    # HR notification
+    hr_payload = {
+        "from": sender,
+        "to": [hr_email],
+        "subject": f"New Career Application - {position}",
+        "text": f"""A new career application has been submitted from the Royals Webtech website.
 
 APPLICANT DETAILS
+
 Name: {name}
 Email: {email}
 Phone: {phone}
@@ -80,6 +164,7 @@ Position: {position}
 Application Type: {application_type}
 
 ACADEMIC INFORMATION
+
 College: {college}
 Degree: {degree}
 Branch: {branch}
@@ -87,6 +172,7 @@ Semester: {semester}
 Skills: {internship_skills}
 
 PROFESSIONAL INFORMATION
+
 Experience: {experience}
 Current Company: {current_company}
 Expected CTC: {expected_ctc}
@@ -94,19 +180,21 @@ Notice Period: {notice_period}
 Job Skills: {job_skills}
 
 ONLINE PROFILES
+
 LinkedIn: {linkedin}
 GitHub: {github}
 Portfolio: {portfolio}
 
 COVER MESSAGE
+
 {cover_message}
 
 Resume: {filename}
-"""
-    hr_msg.attach(
-        filename=filename,
-        content_type=resume_content_type or "application/octet-stream",
-        data=resume_data,
-    )
-    mail.send(user_msg)
-    mail.send(hr_msg)
+""",
+    }
+
+    if attachments:
+        hr_payload["attachments"] = attachments
+
+    send_resend_email(user_payload)
+    send_resend_email(hr_payload)
