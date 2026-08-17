@@ -5,6 +5,9 @@ import requests
 
 RESEND_API_URL = "https://api.resend.com/emails"
 
+# Resend testing mode recipient
+TEST_EMAIL = "priyanshukumar.royalswebtech@gmail.com"
+
 
 def send_resend_email(payload):
     api_key = os.getenv("RESEND_API_KEY")
@@ -44,14 +47,11 @@ def send_contact_emails(
     message,
     source_page
 ):
-    hr_email = os.getenv("HR_EMAIL")
     sender = get_sender()
 
-    # HR notification
-    # Resend testing mode only allows sending to the account owner email.
     hr_payload = {
         "from": sender,
-        "to": [hr_email],
+        "to": [TEST_EMAIL],
         "subject": f"New Website Enquiry - {service}",
         "text": f"""A new enquiry has been submitted from the Royals Webtech website.
 
@@ -65,11 +65,14 @@ Requirement:
 {message}
 
 Source: {source_page}
+
+NOTE:
+This email is being sent to the Resend testing account.
+The applicant email is {email}.
+Applicant confirmation email will be enabled after domain verification.
 """,
     }
 
-    # Send only to HR/testing email.
-    # Applicant confirmation will be enabled after domain verification.
     send_resend_email(hr_payload)
 
 
@@ -99,10 +102,8 @@ def send_career_emails(
     resume_data,
     resume_content_type
 ):
-    hr_email = os.getenv("HR_EMAIL")
     sender = get_sender()
 
-    # Resume attachment
     attachments = []
 
     if resume_data and filename:
@@ -111,10 +112,9 @@ def send_career_emails(
             "content": base64.b64encode(resume_data).decode("utf-8"),
         })
 
-    # HR notification
     hr_payload = {
         "from": sender,
-        "to": [hr_email],
+        "to": [TEST_EMAIL],
         "subject": f"New Career Application - {position}",
         "text": f"""A new career application has been submitted from the Royals Webtech website.
 
@@ -127,6 +127,7 @@ Location: {location}
 Position: {position}
 Application Type: {application_type}
 
+
 ACADEMIC INFORMATION
 
 College: {college}
@@ -134,6 +135,7 @@ Degree: {degree}
 Branch: {branch}
 Semester: {semester}
 Skills: {internship_skills}
+
 
 PROFESSIONAL INFORMATION
 
@@ -143,23 +145,31 @@ Expected CTC: {expected_ctc}
 Notice Period: {notice_period}
 Job Skills: {job_skills}
 
+
 ONLINE PROFILES
 
 LinkedIn: {linkedin}
 GitHub: {github}
 Portfolio: {portfolio}
 
+
 COVER MESSAGE
 
 {cover_message}
 
-Resume: {filename}
+
+RESUME
+
+Filename: {filename}
+Applicant Email: {email}
+
+NOTE:
+This email is being sent to the Resend testing account.
+Applicant confirmation email will be enabled after domain verification.
 """,
     }
 
     if attachments:
         hr_payload["attachments"] = attachments
 
-    # Send only to HR/testing email.
-    # Applicant confirmation will be enabled after domain verification.
     send_resend_email(hr_payload)
